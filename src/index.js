@@ -58,6 +58,23 @@ async function readOpenQuestions(remote, sessionId) {
   }
 }
 
+/** Normalise text for echo comparison: collapse whitespace, drop decorations. */
+function normaliseForEcho(text) {
+  return String(text ?? '')
+    .replace(/[\s]+/gu, '')
+    .replace(/[，。！？、；：""''（）…—,.!?;:'"()\[\]<>《》]/gu, '')
+    .toLowerCase();
+}
+
+/** Whether an assistant turn is just our own prompt coming back unchanged. */
+function makeEchoTest(getLastPrompt) {
+  return (text) => {
+    const prompt = normaliseForEcho(getLastPrompt());
+    if (!prompt) return false;
+    return normaliseForEcho(text) === prompt;
+  };
+}
+
 async function main() {
   const config = loadConfig({ rootDir });
   mkdirSync(config.storageDir, { recursive: true });
@@ -93,6 +110,10 @@ async function main() {
   });
 
   const sessionId = await resolveSessionId(remote, config, log);
+
+  /** The last prompt WeChat submitted, used to recognise a pure echo. */
+  let lastWeChatPrompt = '';
+  const isEchoOfPrompt = makeEchoTest(() => lastWeChatPrompt);
 
   /** Resolve where WeChat replies go: the most recent user who spoke to us. */
   const replyTarget = () => {
@@ -131,8 +152,13 @@ async function main() {
     log,
     config,
     onTurnSettled: async ({ text, tools, fromBridge }) => {
-      if (fromBridge && config.suppressSelfEcho) {
-        log(`sync: turn came from WeChat; skipping echo (${text.length} chars)`);
+      // The user's prompt was already typed in WeChat, so the only thing worth
+      // suppressing is that prompt bounced back verbatim. The assistant reply to
+      // a WeChat-originated turn is exactly what the phone is waiting for, so it
+      // must be delivered — only a turn with no tool activity whose text is just
+      // the echo of our own prompt is dropped.
+      if (fromBridge && config.suppressSelfEcho && tools.length === 0 && isEchoOfPrompt(text)) {
+        log(`sync: turn echoed the WeChat prompt back; skipping echo (${text.length} chars)`);
         return;
       }
       if (!config.syncAssistantToWeChat) {
@@ -147,7 +173,7 @@ async function main() {
       }
       parts.push(text);
       const body = `🖥️ DSH（电脑端）\n\n${parts.join('\n\n')}`;
-      log(`sync: pushing GUI turn to WeChat (${text.length} chars)`);
+      log(`sync: pushing ${fromBridge ? 'WeChat-turn' : 'GUI'} reply to WeChat (${text.length} chars)`);
       await sendToWeChat(body);
     },
   });
@@ -209,6 +235,7 @@ async function main() {
   const submitPrompt = async (text, userId) => {
     const requestId = `wechat-${randomUUID()}`;
     sync.registerOwnRequest(requestId);
+    lastWeChatPrompt = text;
     await remote.call('session/prompt', {
       request: {
         requestId,
