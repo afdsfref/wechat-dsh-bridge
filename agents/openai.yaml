@@ -1,0 +1,3 @@
+interface:
+  display_name: "Wechat DSH Bridge"
+  short_description: "Bridge WeChat to a live DSH desktop session"
