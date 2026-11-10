@@ -1,0 +1,11 @@
+{
+  "name": "wechat-dsh-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bridge WeChat direct messages to a live DeepSeekRuntime (DSH) Web session over the local Web Remote API.",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=22"
+  }
+}
