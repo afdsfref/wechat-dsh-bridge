@@ -1,0 +1,10 @@
+{
+  "dshUrl": "http://127.0.0.1:55787",
+  "targetSessionId": "session-270fd25b-3e25-42ba-b793-1855a7fe60ea",
+  "syncAssistantToWeChat": true,
+  "suppressSelfEcho": true,
+  "showToolCalls": true,
+  "forwardApprovals": true,
+  "forwardQuestions": true,
+  "approvalTimeoutSec": 300
+}
