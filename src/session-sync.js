@@ -176,6 +176,8 @@ export class SessionSync {
       case 'user/message': {
         const rpcId = data?.source?.rpcId;
         if (rpcId && this.#ownRequests.has(rpcId)) {
+          // The prompt may land before or after `turn/start` depending on frame
+          // ordering, so mark whichever of the two slots is currently live.
           if (this.#turn) this.#turn.fromBridge = true;
           else this.#pendingBridgeTurn = true;
         }
